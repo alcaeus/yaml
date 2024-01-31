@@ -1220,6 +1220,26 @@ EOF,
         Yaml::PARSE_REFERENCES_AS_OBJECTS));
     }
 
+    public function testAnchorInInlineList()
+    {
+        $map = ['foo' => 'bar'];
+        $anchor = new Anchor('var', $map);
+        $reference = new Reference('var', $anchor);
+
+        $this->assertEquals([
+            'list' => [
+                $anchor,
+                $reference,
+            ],
+        ], Yaml::parse(<<<'EOF'
+list:
+  - &var
+    foo: 'bar'
+  - *var
+EOF,
+        YAML::PARSE_REFERENCES_AS_OBJECTS));
+    }
+
     public function testYamlDirective()
     {
         $yaml = <<<'EOF'

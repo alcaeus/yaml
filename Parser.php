@@ -15,6 +15,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Reference\Anchor;
 use Symfony\Component\Yaml\Reference\Reference;
 use Symfony\Component\Yaml\Tag\TaggedValue;
+use function array_key_last;
 
 /**
  * Parser parses YAML strings to convert them to PHP arrays.
@@ -195,7 +196,8 @@ class Parser
                     }
                 }
                 if ($isRef) {
-                    $this->storeRef($isRef, end($data), $flags);
+                    $lastKey = array_key_last($data);
+                    $data[$lastKey] = $this->storeRef($isRef, $data[$lastKey], $flags);
                     array_pop($this->refsBeingParsed);
                 }
             } elseif (
