@@ -12,6 +12,8 @@
 namespace Symfony\Component\Yaml;
 
 use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Reference\Anchor;
+use Symfony\Component\Yaml\Reference\Reference;
 use Symfony\Component\Yaml\Tag\TaggedValue;
 
 /**
@@ -193,7 +195,7 @@ class Parser
                     }
                 }
                 if ($isRef) {
-                    $this->refs[$isRef] = end($data);
+                    $this->storeRef($isRef, end($data), $flags);
                     array_pop($this->refsBeingParsed);
                 }
             } elseif (
@@ -238,6 +240,10 @@ class Parser
 
                         $refValue = $this->refs[$refName];
 
+                        if ($refValue instanceof Reference) {
+                            $refValue = $refValue->getValue();
+                        }
+
                         if (Yaml::PARSE_OBJECT_FOR_MAP & $flags && $refValue instanceof \stdClass) {
                             $refValue = (array) $refValue;
                         }
@@ -268,6 +274,10 @@ class Parser
                             // and each of these nodes is merged in turn according to its order in the sequence. Keys in mapping nodes earlier
                             // in the sequence override keys specified in later mapping nodes.
                             foreach ($parsed as $parsedItem) {
+                                if ($parsedItem instanceof Reference) {
+                                    $parsedItem = $parsedItem->getValue();
+                                }
+
                                 if (Yaml::PARSE_OBJECT_FOR_MAP & $flags && $parsedItem instanceof \stdClass) {
                                     $parsedItem = (array) $parsedItem;
                                 }
@@ -313,7 +323,7 @@ class Parser
                         $realCurrentLineNbKey = $this->getRealCurrentLineNb();
                         $value = $this->parseBlock($this->getRealCurrentLineNb() + 1, $this->getNextEmbedBlock(), $flags);
                         if ('<<' === $key) {
-                            $this->refs[$refMatches['ref']] = $value;
+                            $this->storeRef($refMatches['ref'], $value, $flags);
 
                             if (Yaml::PARSE_OBJECT_FOR_MAP & $flags && $value instanceof \stdClass) {
                                 $value = (array) $value;
@@ -343,7 +353,7 @@ class Parser
                     }
                 }
                 if ($isRef) {
-                    $this->refs[$isRef] = $data[$key];
+                    $data[$key] = $this->storeRef($isRef, $data[$key], $flags);
                     array_pop($this->refsBeingParsed);
                 }
             } elseif ('"' === $this->currentLine[0] || "'" === $this->currentLine[0]) {
@@ -1241,4 +1251,16 @@ class Parser
 
         return 0 < $whitespacesConsumed;
     }
-}
+
+    private function storeRef(string $name, $data, int $flags)
+    {
+        $refValue = $data;
+        if (Yaml::PARSE_REFERENCES_AS_OBJECTS & $flags) {
+            $data = new Anchor($name, $data);
+            $refValue = new Reference($name, $data);
+        }
+
+        $this->refs[$name] = $refValue;
+
+        return $data;
+    }}
